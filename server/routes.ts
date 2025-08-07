@@ -2,268 +2,327 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { WSMessage, candleDataSchema, orderBookDataSchema } from "@shared/schema";
+import { 
+  WSMessage, 
+  candleDataSchema, 
+  orderBookDataSchema, 
+  type CandleData,
+  type OrderBookData,
+  type InsertCandle,
+  type InsertOrderBook,
+  wsMessageSchema
+} from "@shared/schema";
 import axios from "axios";
+import { TestDataGenerator } from "./testDataGenerator";
 
-// Store active connections
-const connections = new Set<WebSocket>();
-let candleData: any[] = [];
-let orderBookData: any = { bids: [], asks: [], lastUpdate: Date.now() };
+// Trading data manager for handling connections and real-time updates
+class TradingDataManager {
+  private connections = new Set<WebSocket>();
+  private subscriptions = new Map<string, Set<WebSocket>>();
+  private dataGenerators = new Map<string, TestDataGenerator>();
+  private updateIntervals = new Map<string, NodeJS.Timeout>();
+  private useMockData = true; // Use test data instead of Binance API due to restrictions
 
-// Binance API configuration
-const BINANCE_WS_BASE = "wss://stream.binance.com:9443/ws";
-const BINANCE_API_BASE = "https://api.binance.com/api/v3";
+  constructor() {
+    // Initialize test data generators for available symbols
+    const symbols = TestDataGenerator.getAvailableSymbols();
+    symbols.forEach(symbol => {
+      const basePrice = TestDataGenerator.getBasePriceForSymbol(symbol);
+      this.dataGenerators.set(symbol, new TestDataGenerator(basePrice));
+    });
+  }
+
+  addConnection(ws: WebSocket) {
+    this.connections.add(ws);
+    console.log(`Клиент подключен. Всего подключений: ${this.connections.size}`);
+  }
+
+  removeConnection(ws: WebSocket) {
+    this.connections.delete(ws);
+    
+    // Clean up subscriptions for this connection
+    this.subscriptions.forEach((clients, symbol) => {
+      clients.delete(ws);
+      if (clients.size === 0) {
+        this.stopDataStream(symbol);
+      }
+    });
+    
+    console.log(`Клиент отключен. Всего подключений: ${this.connections.size}`);
+  }
+
+  subscribeToSymbol(symbol: string, interval: string, ws: WebSocket) {
+    const key = `${symbol}_${interval}`;
+    
+    if (!this.subscriptions.has(key)) {
+      this.subscriptions.set(key, new Set());
+    }
+    
+    this.subscriptions.get(key)!.add(ws);
+    
+    // Start data stream if this is the first subscription
+    if (this.subscriptions.get(key)!.size === 1) {
+      this.startDataStream(symbol, interval);
+    }
+    
+    console.log(`Подписка на ${symbol} ${interval}. Подписчиков: ${this.subscriptions.get(key)!.size}`);
+  }
+
+  private async startDataStream(symbol: string, interval: string) {
+    const key = `${symbol}_${interval}`;
+    const generator = this.dataGenerators.get(symbol);
+    if (!generator) return;
+
+    // Generate and save initial historical data
+    const historicalCandles = generator.generateHistoricalCandles(200, interval);
+    for (const candleData of historicalCandles) {
+      const insertCandle: InsertCandle = {
+        symbol,
+        interval,
+        openTime: new Date(candleData.time * 1000),
+        closeTime: new Date((candleData.time + TestDataGenerator.getIntervalMs(interval) / 1000) * 1000),
+        open: candleData.open,
+        high: candleData.high,
+        low: candleData.low,
+        close: candleData.close,
+        volume: candleData.volume,
+        buyVolume: candleData.buyVolume,
+        sellVolume: candleData.sellVolume,
+        delta: candleData.delta,
+        clusters: candleData.clusters,
+      };
+      await storage.saveCandleData(insertCandle);
+    }
+
+    // Start real-time updates
+    const updateInterval = setInterval(async () => {
+      if (!this.subscriptions.has(key)) return;
+
+      try {
+        const newCandle = generator.generateRealtimeUpdate(interval);
+        const insertCandle: InsertCandle = {
+          symbol,
+          interval,
+          openTime: new Date(newCandle.time * 1000),
+          closeTime: new Date((newCandle.time + TestDataGenerator.getIntervalMs(interval) / 1000) * 1000),
+          open: newCandle.open,
+          high: newCandle.high,
+          low: newCandle.low,
+          close: newCandle.close,
+          volume: newCandle.volume,
+          buyVolume: newCandle.buyVolume,
+          sellVolume: newCandle.sellVolume,
+          delta: newCandle.delta,
+          clusters: newCandle.clusters,
+        };
+        
+        await storage.saveCandleData(insertCandle);
+
+        // Generate and save order book
+        const orderBookData = generator.generateOrderBook(20);
+        const insertOrderBook: InsertOrderBook = {
+          symbol,
+          bids: orderBookData.bids,
+          asks: orderBookData.asks,
+          lastUpdate: new Date(orderBookData.lastUpdate),
+        };
+        await storage.saveOrderBookData(insertOrderBook);
+
+        // Broadcast updates to subscribed clients
+        this.broadcastToSubscribers(key, {
+          type: 'candle_update',
+          symbol,
+          interval,
+          data: newCandle
+        });
+
+        this.broadcastToSubscribers(key, {
+          type: 'orderbook_update',
+          symbol,
+          data: orderBookData
+        });
+
+      } catch (error) {
+        console.error(`Ошибка обновления данных для ${symbol}:`, error);
+      }
+    }, Math.min(TestDataGenerator.getIntervalMs(interval), 3000)); // Update at least every 3 seconds
+
+    this.updateIntervals.set(key, updateInterval);
+  }
+
+  private stopDataStream(symbol: string) {
+    this.subscriptions.delete(symbol);
+    const interval = this.updateIntervals.get(symbol);
+    if (interval) {
+      clearInterval(interval);
+      this.updateIntervals.delete(symbol);
+    }
+    console.log(`Остановлен поток данных для ${symbol}`);
+  }
+
+  private broadcastToSubscribers(subscriptionKey: string, message: any) {
+    const clients = this.subscriptions.get(subscriptionKey);
+    if (!clients) return;
+
+    const messageStr = JSON.stringify(message);
+    
+    clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(messageStr);
+      }
+    });
+  }
+
+  async getHistoricalData(symbol: string, interval: string, limit: number = 200) {
+    try {
+      // Get data from storage first
+      const cachedCandles = await storage.getCandleData(symbol, interval, limit);
+      const cachedOrderBook = await storage.getOrderBookData(symbol);
+      
+      if (cachedCandles.length > 0) {
+        return {
+          candles: cachedCandles,
+          orderBook: cachedOrderBook,
+          symbol,
+          interval,
+        };
+      }
+
+      // Generate test data if no cached data available
+      const generator = this.dataGenerators.get(symbol);
+      if (generator) {
+        const testCandles = generator.generateHistoricalCandles(limit, interval);
+        const testOrderBook = generator.generateOrderBook(20);
+        
+        return {
+          candles: testCandles,
+          orderBook: testOrderBook,
+          symbol,
+          interval,
+        };
+      }
+
+      throw new Error('Не удалось сгенерировать данные');
+      
+    } catch (error) {
+      console.error('Ошибка получения исторических данных:', error);
+      throw error;
+    }
+  }
+}
+
+const tradingManager = new TradingDataManager();
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
-  // WebSocket server for trading data
+  // Add API routes
+  app.get("/api/trading/:symbol", async (req, res) => {
+    try {
+      const { symbol } = req.params;
+      const interval = (req.query.interval as string) || '1m';
+      const limit = parseInt(req.query.limit as string) || 200;
+      
+      const data = await tradingManager.getHistoricalData(symbol.toUpperCase(), interval, limit);
+      res.json(data);
+      
+    } catch (error) {
+      console.error('Ошибка получения торговых данных:', error);
+      res.status(500).json({ error: 'Не удалось получить торговые данные' });
+    }
+  });
+
+  app.get("/api/symbols", (req, res) => {
+    res.json({
+      symbols: TestDataGenerator.getAvailableSymbols(),
+      intervals: TestDataGenerator.INTERVALS,
+      orderBookDepths: TestDataGenerator.ORDER_BOOK_DEPTHS
+    });
+  });
+  
+  // WebSocket server for real-time trading data
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
-  // Function to calculate clusters from trade data
-  function calculateClusters(candle: any, trades: any[]): any[] {
-    const { high, low } = candle;
-    const priceRange = high - low;
-    if (priceRange === 0) return [];
-
-    const numClusters = 20;
-    const clusterSize = priceRange / numClusters;
-    const clusters: any[] = [];
-
-    for (let i = 0; i < numClusters; i++) {
-      const priceLevel = low + (i * clusterSize);
-      const relevantTrades = trades.filter(trade => 
-        trade.price >= priceLevel && trade.price < priceLevel + clusterSize
-      );
-
-      const buyVolume = relevantTrades
-        .filter(trade => !trade.isBuyerMaker)
-        .reduce((sum, trade) => sum + parseFloat(trade.quantity), 0);
-      
-      const sellVolume = relevantTrades
-        .filter(trade => trade.isBuyerMaker)
-        .reduce((sum, trade) => sum + parseFloat(trade.quantity), 0);
-
-      const totalVolume = buyVolume + sellVolume;
-      const delta = buyVolume - sellVolume;
-      const aggression = totalVolume > 0 ? Math.abs(delta) / totalVolume : 0;
-
-      if (totalVolume > 0) {
-        clusters.push({
-          price: priceLevel,
-          volume: totalVolume,
-          buyVolume,
-          sellVolume,
-          delta,
-          aggression,
-        });
-      }
-    }
-
-    return clusters.sort((a, b) => b.volume - a.volume);
-  }
-
-  // Function to fetch historical data
-  async function fetchHistoricalData(symbol: string = "BTCUSDT"): Promise<any[]> {
-    try {
-      const response = await axios.get(`${BINANCE_API_BASE}/klines`, {
-        params: {
-          symbol: symbol.toUpperCase(),
-          interval: "1m",
-          limit: 100,
-        },
-      });
-
-      const klines = response.data;
-      const processedData = klines.map((kline: any[]) => {
-        const [timestamp, open, high, low, close, volume] = kline;
-        
-        // Generate realistic cluster data based on OHLC
-        const clusters = [];
-        const priceRange = parseFloat(high) - parseFloat(low);
-        const numClusters = Math.min(15, Math.max(5, Math.floor(priceRange / (parseFloat(close) * 0.0001))));
-        
-        for (let i = 0; i < numClusters; i++) {
-          const price = parseFloat(low) + (priceRange * i / numClusters);
-          const baseVolume = parseFloat(volume) / numClusters;
-          const volumeVariation = Math.random() * 0.5 + 0.5; // 0.5 to 1.0 multiplier
-          const totalVolume = baseVolume * volumeVariation;
-          
-          // Simulate buy/sell distribution
-          const buyRatio = Math.random() * 0.4 + 0.3; // 30% to 70% buy volume
-          const buyVolume = totalVolume * buyRatio;
-          const sellVolume = totalVolume * (1 - buyRatio);
-          
-          clusters.push({
-            price,
-            volume: totalVolume,
-            buyVolume,
-            sellVolume,
-            delta: buyVolume - sellVolume,
-            aggression: Math.abs(buyVolume - sellVolume) / totalVolume,
-          });
-        }
-
-        return {
-          time: Math.floor(timestamp / 1000),
-          open: parseFloat(open),
-          high: parseFloat(high),
-          low: parseFloat(low),
-          close: parseFloat(close),
-          volume: parseFloat(volume),
-          buyVolume: parseFloat(volume) * (Math.random() * 0.3 + 0.4), // 40-70% buy volume
-          sellVolume: parseFloat(volume) * (Math.random() * 0.3 + 0.3), // 30-60% sell volume
-          delta: 0, // Will be calculated from buy/sell volumes
-          clusters: clusters.sort((a, b) => b.volume - a.volume),
-        };
-      });
-
-      // Calculate delta for each candle
-      processedData.forEach(candle => {
-        candle.delta = candle.buyVolume - candle.sellVolume;
-      });
-
-      return processedData;
-    } catch (error) {
-      console.error("Error fetching historical data:", error);
-      return [];
-    }
-  }
-
-  // Function to fetch order book data
-  async function fetchOrderBook(symbol: string = "BTCUSDT"): Promise<any> {
-    try {
-      const response = await axios.get(`${BINANCE_API_BASE}/depth`, {
-        params: {
-          symbol: symbol.toUpperCase(),
-          limit: 20,
-        },
-      });
-
-      const { bids, asks } = response.data;
-      
-      return {
-        bids: bids.map(([price, volume]: [string, string]) => ({
-          price: parseFloat(price),
-          volume: parseFloat(volume),
-        })),
-        asks: asks.map(([price, volume]: [string, string]) => ({
-          price: parseFloat(price),
-          volume: parseFloat(volume),
-        })),
-        lastUpdate: Date.now(),
-      };
-    } catch (error) {
-      console.error("Error fetching order book:", error);
-      return { bids: [], asks: [], lastUpdate: Date.now() };
-    }
-  }
-
-  // WebSocket connection handler
   wss.on('connection', async (ws: WebSocket) => {
-    console.log('Client connected to trading WebSocket');
-    connections.add(ws);
+    console.log('Клиент подключен к WebSocket');
+    tradingManager.addConnection(ws);
 
     // Send connection status
     ws.send(JSON.stringify({
       type: "connection_status",
-      data: { connected: true, symbol: "BTCUSDT" }
+      data: { connected: true, message: "Подключение к торговому серверу установлено" }
     }));
 
+    // Send initial data for BTCUSDT
     try {
-      // Send historical data
-      const historical = await fetchHistoricalData();
-      candleData = historical;
+      const initialData = await tradingManager.getHistoricalData('BTCUSDT', '1m', 200);
       
       ws.send(JSON.stringify({
         type: "historical_data",
-        data: historical
+        symbol: 'BTCUSDT',
+        interval: '1m',
+        data: initialData.candles
       }));
 
-      // Send initial order book
-      const initialOrderBook = await fetchOrderBook();
-      orderBookData = initialOrderBook;
-      
-      ws.send(JSON.stringify({
-        type: "orderbook_update",
-        data: initialOrderBook
-      }));
-
-    } catch (error) {
-      console.error("Error sending initial data:", error);
-    }
-
-    ws.on('close', () => {
-      console.log('Client disconnected from trading WebSocket');
-      connections.delete(ws);
-    });
-
-    ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
-      connections.delete(ws);
-    });
-  });
-
-  // Simulate real-time updates
-  const updateInterval = setInterval(async () => {
-    if (connections.size === 0) return;
-
-    try {
-      // Update order book
-      const newOrderBook = await fetchOrderBook();
-      orderBookData = newOrderBook;
-
-      // Broadcast order book update
-      const orderBookMessage = JSON.stringify({
-        type: "orderbook_update",
-        data: newOrderBook
-      });
-
-      connections.forEach(ws => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(orderBookMessage);
-        }
-      });
-
-      // Simulate candle updates (every 10 seconds)
-      if (Math.random() < 0.1 && candleData.length > 0) {
-        const lastCandle = candleData[candleData.length - 1];
-        const priceChange = (Math.random() - 0.5) * lastCandle.close * 0.001; // Max 0.1% change
-        const newClose = lastCandle.close + priceChange;
-        
-        const updatedCandle = {
-          ...lastCandle,
-          close: newClose,
-          high: Math.max(lastCandle.high, newClose),
-          low: Math.min(lastCandle.low, newClose),
-          time: Math.floor(Date.now() / 1000),
-        };
-
-        // Update the last candle
-        candleData[candleData.length - 1] = updatedCandle;
-
-        const candleMessage = JSON.stringify({
-          type: "candle_update",
-          data: updatedCandle
-        });
-
-        connections.forEach(ws => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(candleMessage);
-          }
-        });
+      if (initialData.orderBook) {
+        ws.send(JSON.stringify({
+          type: "orderbook_update",
+          symbol: 'BTCUSDT',
+          data: initialData.orderBook
+        }));
       }
 
     } catch (error) {
-      console.error("Error in update interval:", error);
+      console.error("Ошибка отправки начальных данных:", error);
+      ws.send(JSON.stringify({
+        type: "error",
+        message: "Ошибка загрузки данных"
+      }));
     }
-  }, 2000); // Update every 2 seconds
 
-  // Cleanup on server shutdown
-  process.on('SIGTERM', () => {
-    clearInterval(updateInterval);
-    wss.close();
+    ws.on('message', (data) => {
+      try {
+        const message = JSON.parse(data.toString());
+        const validatedMessage = wsMessageSchema.parse(message);
+        
+        if (validatedMessage.type === 'subscribe' && validatedMessage.symbol) {
+          const interval = validatedMessage.interval || '1m';
+          tradingManager.subscribeToSymbol(
+            validatedMessage.symbol.toUpperCase(), 
+            interval, 
+            ws
+          );
+          
+          ws.send(JSON.stringify({
+            type: "subscription_status",
+            symbol: validatedMessage.symbol,
+            interval,
+            subscribed: true
+          }));
+        }
+      } catch (error) {
+        console.error('Некорректное WebSocket сообщение:', error);
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: 'Некорректный формат сообщения'
+        }));
+      }
+    });
+
+    ws.on('close', () => {
+      tradingManager.removeConnection(ws);
+    });
+
+    ws.on('error', (error) => {
+      console.error('Ошибка WebSocket:', error);
+      tradingManager.removeConnection(ws);
+    });
   });
+
+  console.log('WebSocket сервер запущен на пути /ws');
+  console.log('API endpoints:');
+  console.log('  GET /api/trading/:symbol');
+  console.log('  GET /api/symbols');
 
   return httpServer;
 }

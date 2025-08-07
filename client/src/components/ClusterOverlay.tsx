@@ -27,10 +27,10 @@ export default function ClusterOverlay({
   const getClusterColor = (cluster: Cluster, isHovered: boolean) => {
     const isGreen = cluster.delta > 0;
     const intensity = Math.min(Math.abs(cluster.aggression), 1);
-    const opacity = isHovered ? 0.9 : Math.max(0.3, intensity * 0.8);
+    const opacity = isHovered ? 0.9 : Math.max(0.4, intensity * 0.8);
     return isGreen 
-      ? `rgba(38, 166, 154, ${opacity})` 
-      : `rgba(239, 83, 80, ${opacity})`;
+      ? `rgba(74, 222, 128, ${opacity})` 
+      : `rgba(248, 113, 113, ${opacity})`;
   };
 
   const getClusterWidth = (cluster: Cluster, maxVolume: number) => {

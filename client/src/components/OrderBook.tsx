@@ -2,61 +2,79 @@ import { OrderBookData } from "@shared/schema";
 
 interface OrderBookProps {
   orderBookData: OrderBookData;
+  priceRange: { min: number; max: number };
 }
 
-export default function OrderBook({ orderBookData }: OrderBookProps) {
-  const currentPrice = orderBookData.asks.length > 0 && orderBookData.bids.length > 0
-    ? (orderBookData.asks[orderBookData.asks.length - 1].price + orderBookData.bids[0].price) / 2
-    : 0;
-
-  const priceChange = 1.24; // This would come from trading state
-  const isPositive = priceChange >= 0;
+export default function OrderBook({ orderBookData, priceRange }: OrderBookProps) {
+  const sortedAsks = [...orderBookData.asks].sort((a, b) => a.price - b.price).slice(0, 10);
+  const sortedBids = [...orderBookData.bids].sort((a, b) => b.price - a.price).slice(0, 10);
+  
+  const maxQuantity = Math.max(
+    ...sortedAsks.map(ask => ask.volume),
+    ...sortedBids.map(bid => bid.volume)
+  );
 
   return (
-    <div className="w-48 border-l border-gray-200 bg-gray-50">
-      <div className="p-3">
-        <div className="text-sm font-medium mb-3 text-center text-gray-900">Order Book</div>
-        
-        {/* Ask Orders (Sell) */}
-        <div className="mb-4">
-          <div className="text-xs text-gray-500 mb-2">Ask (Sell)</div>
-          <div className="space-y-px">
-            {orderBookData.asks.slice(0, 5).reverse().map((ask, index) => (
-              <div 
-                key={index}
-                className="flex justify-between items-center text-xs bg-red-50 px-2 py-1 group hover:bg-red-100 transition-colors cursor-pointer"
+    <div className="w-56 h-full bg-zinc-900/30 border-l border-zinc-800 flex flex-col">
+      {/* Header */}
+      <div className="h-8 bg-zinc-900/50 border-b border-zinc-800 flex items-center justify-center">
+        <span className="text-xs text-zinc-400 font-medium">Стакан заявок</span>
+      </div>
+
+      <div className="flex-1 flex flex-col text-xs font-mono">
+        {/* Asks (Sell Orders) */}
+        <div className="flex-1 flex flex-col-reverse p-2 space-y-0.5 space-y-reverse">
+          {sortedAsks.map((ask, index) => {
+            const quantity = ask.volume;
+            const price = ask.price;
+            const widthPercent = (quantity / maxQuantity) * 100;
+            
+            return (
+              <div
+                key={`ask-${index}`}
+                className="flex justify-between items-center h-4 relative"
               >
-                <span className="text-red-500 font-mono">{ask.price.toFixed(2)}</span>
-                <span className="text-gray-600">{ask.volume.toFixed(3)}</span>
+                <div
+                  className="absolute right-0 top-0 h-full bg-red-900/20"
+                  style={{ width: `${widthPercent}%` }}
+                />
+                <span className="text-zinc-400 z-10">{quantity.toFixed(3)}</span>
+                <span className="text-red-400 z-10">{price.toFixed(2)}</span>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
 
-        {/* Current Price */}
-        <div className="text-center py-2 border-y border-gray-300">
-          <div className={`text-lg font-mono font-medium ${isPositive ? 'text-green-600' : 'text-red-500'}`}>
-            {currentPrice.toFixed(2)}
-          </div>
-          <div className={`text-xs ${isPositive ? 'text-green-600' : 'text-red-500'}`}>
-            {isPositive ? '+' : ''}{priceChange.toFixed(2)}% {isPositive ? '↗' : '↘'}
-          </div>
+        {/* Spread */}
+        <div className="h-8 border-y border-zinc-800 flex items-center justify-center bg-zinc-900/20">
+          {sortedBids.length > 0 && sortedAsks.length > 0 && (
+            <span className="text-zinc-500 text-xs">
+              Спред: {(sortedAsks[0].price - sortedBids[0].price).toFixed(2)}
+            </span>
+          )}
         </div>
 
-        {/* Bid Orders (Buy) */}
-        <div className="mt-4">
-          <div className="text-xs text-gray-500 mb-2">Bid (Buy)</div>
-          <div className="space-y-px">
-            {orderBookData.bids.slice(0, 5).map((bid, index) => (
-              <div 
-                key={index}
-                className="flex justify-between items-center text-xs bg-green-50 px-2 py-1 group hover:bg-green-100 transition-colors cursor-pointer"
+        {/* Bids (Buy Orders) */}
+        <div className="flex-1 flex flex-col p-2 space-y-0.5">
+          {sortedBids.map((bid, index) => {
+            const quantity = bid.volume;
+            const price = bid.price;
+            const widthPercent = (quantity / maxQuantity) * 100;
+            
+            return (
+              <div
+                key={`bid-${index}`}
+                className="flex justify-between items-center h-4 relative"
               >
-                <span className="text-green-600 font-mono">{bid.price.toFixed(2)}</span>
-                <span className="text-gray-600">{bid.volume.toFixed(3)}</span>
+                <div
+                  className="absolute right-0 top-0 h-full bg-green-900/20"
+                  style={{ width: `${widthPercent}%` }}
+                />
+                <span className="text-zinc-400 z-10">{quantity.toFixed(3)}</span>
+                <span className="text-green-400 z-10">{price.toFixed(2)}</span>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </div>
     </div>

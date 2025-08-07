@@ -10,54 +10,46 @@ export default function Crosshair({ x, y, visible, price, time }: CrosshairProps
   if (!visible) return null;
 
   return (
-    <>
+    <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }}>
       {/* Vertical line */}
-      <div 
-        className="absolute w-px bg-gray-600 opacity-30 pointer-events-none"
-        style={{ 
-          left: `${x}px`,
-          top: 0,
-          bottom: 0,
-          zIndex: 10
-        }}
+      <div
+        className="absolute top-0 h-full w-px bg-zinc-500/70"
+        style={{ left: x }}
       />
       
       {/* Horizontal line */}
-      <div 
-        className="absolute h-px bg-gray-600 opacity-30 pointer-events-none"
-        style={{ 
-          top: `${y}px`,
-          left: 0,
-          right: 0,
-          zIndex: 10
-        }}
+      <div
+        className="absolute left-0 w-full h-px bg-zinc-500/70"
+        style={{ top: y }}
       />
-
+      
       {/* Price label */}
-      <div 
-        className="absolute bg-gray-900 text-white text-xs px-2 py-1 rounded pointer-events-none"
-        style={{ 
-          top: `${y}px`,
-          right: 0,
-          transform: 'translateY(-50%)',
-          zIndex: 15
+      <div
+        className="absolute bg-zinc-800 text-white px-2 py-1 text-xs font-mono border border-zinc-600 rounded"
+        style={{
+          right: 8,
+          top: y - 12,
+          transform: 'translateY(-50%)'
         }}
       >
-        {price.toFixed(2)}
+        ${price.toFixed(2)}
       </div>
-
+      
       {/* Time label */}
-      <div 
-        className="absolute bg-gray-900 text-white text-xs px-2 py-1 rounded pointer-events-none"
-        style={{ 
-          left: `${x}px`,
-          bottom: 0,
-          transform: 'translateX(-50%)',
-          zIndex: 15
+      <div
+        className="absolute bg-zinc-800 text-white px-2 py-1 text-xs font-mono border border-zinc-600 rounded"
+        style={{
+          left: x - 40,
+          bottom: 8,
+          transform: 'translateX(-50%)'
         }}
       >
-        {new Date(time * 1000).toLocaleTimeString()}
+        {new Date(time).toLocaleTimeString('ru-RU', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          second: '2-digit'
+        })}
       </div>
-    </>
+    </div>
   );
 }

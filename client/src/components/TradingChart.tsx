@@ -120,7 +120,7 @@ export default function TradingChart({ candleData, orderBookData, isConnected }:
   }, []);
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full bg-zinc-950">
       {/* Left Volume Profile */}
       <VolumeProfile 
         candleData={candleData}
@@ -131,7 +131,7 @@ export default function TradingChart({ candleData, orderBookData, isConnected }:
       {/* Main Chart Area */}
       <div 
         ref={chartRef}
-        className="flex-1 relative bg-white cursor-crosshair"
+        className="flex-1 relative bg-zinc-950 cursor-crosshair"
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onWheel={handleWheel}
@@ -142,7 +142,7 @@ export default function TradingChart({ candleData, orderBookData, isConnected }:
         <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
           <defs>
             <pattern id="grid" width="40" height="20" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 20" fill="none" stroke="hsl(240, 5%, 96%)" strokeWidth="0.5"/>
+              <path d="M 40 0 L 0 0 0 20" fill="none" stroke="hsl(240, 5%, 15%)" strokeWidth="0.5"/>
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#grid)" />
@@ -160,7 +160,7 @@ export default function TradingChart({ candleData, orderBookData, isConnected }:
                 y1={y}
                 x2="100%"
                 y2={y}
-                stroke="hsl(240, 5%, 89%)"
+                stroke="hsl(240, 5%, 20%)"
                 strokeWidth="0.5"
               />
             );
@@ -194,6 +194,13 @@ export default function TradingChart({ candleData, orderBookData, isConnected }:
           time={crosshair.time}
         />
 
+        {/* Volume Histogram */}
+        <VolumeHistogram 
+          candleData={candleData}
+          zoom={zoom}
+          pan={pan}
+        />
+
         {/* Tooltip */}
         <Tooltip 
           visible={tooltip.visible}
@@ -203,7 +210,7 @@ export default function TradingChart({ candleData, orderBookData, isConnected }:
         />
 
         {/* Price Scale */}
-        <div className="absolute right-0 top-0 w-16 h-full bg-gray-50 border-l border-gray-200">
+        <div className="absolute right-0 top-0 w-20 h-full bg-zinc-900/50 border-l border-zinc-800">
           <div className="relative h-full">
             {[...Array(10)].map((_, i) => {
               const price = priceRange.min + (priceRange.max - priceRange.min) * ((9 - i) / 9);
@@ -211,10 +218,10 @@ export default function TradingChart({ candleData, orderBookData, isConnected }:
               return (
                 <div
                   key={i}
-                  className="absolute right-2 text-xs text-gray-600 font-mono"
+                  className="absolute right-2 text-xs text-zinc-400 font-mono"
                   style={{ top: `${y}%`, transform: 'translateY(-50%)' }}
                 >
-                  {price.toFixed(0)}
+                  {price.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                 </div>
               );
             })}
@@ -223,16 +230,7 @@ export default function TradingChart({ candleData, orderBookData, isConnected }:
       </div>
 
       {/* Right Order Book */}
-      <OrderBook orderBookData={orderBookData} />
-
-      {/* Bottom Volume Histogram */}
-      <div className="absolute bottom-0 left-20 right-48 h-16">
-        <VolumeHistogram 
-          candleData={candleData}
-          zoom={zoom}
-          pan={pan}
-        />
-      </div>
+      <OrderBook orderBookData={orderBookData} priceRange={priceRange} />
     </div>
   );
 }

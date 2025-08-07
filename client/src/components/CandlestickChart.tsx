@@ -58,7 +58,7 @@ export default function CandlestickChart({
       const bodyTop = Math.min(openY, closeY);
 
       // Draw wick
-      ctx.strokeStyle = '#131722';
+      ctx.strokeStyle = isGreen ? '#4ade80' : '#f87171';
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(x + candleWidth / 2, highY);
@@ -66,12 +66,12 @@ export default function CandlestickChart({
       ctx.stroke();
 
       // Draw body
-      ctx.fillStyle = isGreen ? '#26A69A' : '#EF5350';
+      ctx.fillStyle = isGreen ? '#4ade80' : '#f87171';
       ctx.fillRect(x, bodyTop, candleWidth, Math.max(bodyHeight, 1));
       
       // Add border for hollow candles
       if (bodyHeight > 1) {
-        ctx.strokeStyle = isGreen ? '#26A69A' : '#EF5350';
+        ctx.strokeStyle = isGreen ? '#4ade80' : '#f87171';
         ctx.lineWidth = 1;
         ctx.strokeRect(x, bodyTop, candleWidth, bodyHeight);
       }

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { CandleData, OrderBookData, TradingState, WSMessage } from "@shared/schema";
 import { useWebSocket } from "./useWebSocket";
 
@@ -86,16 +86,57 @@ export function useTradingData() {
     setTradingState(prev => ({ ...prev, isConnected: false }));
   }, []);
 
-  const { isConnected } = useWebSocket({
+  const { isConnected, sendMessage } = useWebSocket({
     onMessage: handleWebSocketMessage,
     onConnect: handleConnect,
     onDisconnect: handleDisconnect,
   });
+
+  // Auto-subscribe to BTCUSDT when connected
+  const subscribedRef = useRef(false);
+  
+  useEffect(() => {
+    if (isConnected && !subscribedRef.current) {
+      sendMessage({
+        type: 'subscribe',
+        symbol: 'BTCUSDT',
+        interval: '1m',
+      });
+      subscribedRef.current = true;
+    }
+    
+    // Reset flag when disconnected
+    if (!isConnected) {
+      subscribedRef.current = false;
+    }
+  }, [isConnected, sendMessage]);
+
+  const subscribeToSymbol = useCallback((symbol: string, interval: string = '1m') => {
+    if (isConnected) {
+      sendMessage({
+        type: 'subscribe',
+        symbol: symbol.toUpperCase(),
+        interval,
+      });
+    }
+  }, [isConnected, sendMessage]);
+
+  const unsubscribeFromSymbol = useCallback((symbol: string, interval: string = '1m') => {
+    if (isConnected) {
+      sendMessage({
+        type: 'unsubscribe',
+        symbol: symbol.toUpperCase(),
+        interval,
+      });
+    }
+  }, [isConnected, sendMessage]);
 
   return {
     candleData,
     orderBookData,
     tradingState: { ...tradingState, isConnected },
     isConnected,
+    subscribeToSymbol,
+    unsubscribeFromSymbol,
   };
 }
