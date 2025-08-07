@@ -1,0 +1,645 @@
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Cluster Trading Interface - BTC/USDT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    'chart-bg': '#FFFFFF',
+                    'chart-text': '#131722',
+                    'chart-border': '#E1E3E6',
+                    'bull': '#26A69A',
+                    'bear': '#EF5350',
+                    'accent': '#2962FF',
+                    'grid': '#F0F3FA'
+                },
+                fontFamily: {
+                    'chart': ['Roboto', 'system-ui', 'sans-serif']
+                }
+            }
+        }
+    };
+    </script>
+    <style>
+        .crosshair-v {
+            position: absolute;
+            width: 1px;
+            background: #131722;
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .crosshair-h {
+            position: absolute;
+            height: 1px;
+            background: #131722;
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .candle {
+            transition: all 0.2s ease;
+        }
+        .cluster-rect {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .cluster-rect:hover {
+            stroke-width: 2;
+            opacity: 0.9;
+        }
+        .volume-bar {
+            transition: all 0.2s ease;
+        }
+        .price-level {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 11px;
+        }
+        .tooltip {
+            background: rgba(19, 23, 34, 0.95);
+            backdrop-filter: blur(8px);
+            border-radius: 4px;
+            padding: 8px 12px;
+            color: white;
+            font-size: 11px;
+            line-height: 1.4;
+            max-width: 200px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body class="bg-chart-bg font-chart text-chart-text overflow-hidden">
+    <!-- @COMPONENT: TradingInterface -->
+    <div class="h-screen flex flex-col">
+        <!-- Header -->
+        <!-- @COMPONENT: TradingHeader -->
+        <div class="h-12 border-b border-chart-border flex items-center justify-between px-4 bg-white">
+            <div class="flex items-center space-x-4">
+                <h1 class="text-lg font-medium">BTC/USDT</h1>
+                <div class="flex items-center space-x-2 text-sm">
+                    <span class="text-bull font-mono">$43,582.50</span>
+                    <span class="text-bull text-xs">+1.24%</span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <select class="px-3 py-1 border border-chart-border rounded text-sm focus:outline-none focus:border-accent">
+                    <option>1m</option>
+                    <option>5m</option>
+                    <option>15m</option>
+                    <option>1h</option>
+                </select>
+                <button class="px-3 py-1 border border-chart-border rounded text-sm hover:bg-gray-50 transition-colors">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: TradingHeader -->
+
+        <!-- Main Chart Area -->
+        <div class="flex-1 flex">
+            <!-- Left Volume Profile -->
+            <!-- @COMPONENT: VolumeProfile -->
+            <div class="w-20 border-r border-chart-border bg-gray-50 relative">
+                <div class="absolute inset-0 p-2">
+                    <div class="text-xs text-gray-500 mb-2">Volume</div>
+                    <!-- Volume Profile Bars -->
+                    <div class="space-y-px">
+                        <!-- @MAP: volumeProfileData.map(level => ( -->
+                        <div class="flex items-center h-2 group" data-mock="true">
+                            <div class="bg-bull h-1 group-hover:bg-opacity-80 transition-all cursor-pointer" 
+                                 style="width: 60%" data-bind="level.buyVolume"></div>
+                            <div class="bg-bear h-1 group-hover:bg-opacity-80 transition-all cursor-pointer" 
+                                 style="width: 30%" data-bind="level.sellVolume"></div>
+                        </div>
+                        <div class="flex items-center h-2 group" data-mock="true">
+                            <div class="bg-bull h-1 group-hover:bg-opacity-80 transition-all cursor-pointer" 
+                                 style="width: 45%"></div>
+                            <div class="bg-bear h-1 group-hover:bg-opacity-80 transition-all cursor-pointer" 
+                                 style="width: 55%"></div>
+                        </div>
+                        <div class="flex items-center h-2 group" data-mock="true">
+                            <div class="bg-bull h-1 group-hover:bg-opacity-80 transition-all cursor-pointer" 
+                                 style="width: 75%"></div>
+                            <div class="bg-bear h-1 group-hover:bg-opacity-80 transition-all cursor-pointer" 
+                                 style="width: 25%"></div>
+                        </div>
+                        <div class="flex items-center h-2 group" data-mock="true">
+                            <div class="bg-bull h-1 group-hover:bg-opacity-80 transition-all cursor-pointer" 
+                                 style="width: 35%"></div>
+                            <div class="bg-bear h-1 group-hover:bg-opacity-80 transition-all cursor-pointer" 
+                                 style="width: 65%"></div>
+                        </div>
+                        <div class="flex items-center h-2 group" data-mock="true">
+                            <div class="bg-bull h-1 group-hover:bg-opacity-80 transition-all cursor-pointer" 
+                                 style="width: 80%"></div>
+                            <div class="bg-bear h-1 group-hover:bg-opacity-80 transition-all cursor-pointer" 
+                                 style="width: 20%"></div>
+                        </div>
+                        <!-- @END_MAP )) -->
+                    </div>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: VolumeProfile -->
+
+            <!-- Central Chart Area with Clusters -->
+            <!-- @COMPONENT: CandlestickChart -->
+            <div class="flex-1 relative bg-white" id="chart-container">
+                <!-- Grid Lines -->
+                <svg class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 1;">
+                    <defs>
+                        <pattern id="grid" width="40" height="20" patternUnits="userSpaceOnUse">
+                            <path d="M 40 0 L 0 0 0 20" fill="none" stroke="#F0F3FA" stroke-width="0.5"/>
+                        </pattern>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#grid)" />
+                </svg>
+
+                <!-- Candlesticks and Clusters -->
+                <svg class="absolute inset-0 w-full h-full" style="z-index: 2;" id="main-chart">
+                    <!-- Price Axis Lines -->
+                    <g id="price-lines">
+                        <line x1="0" y1="100" x2="100%" y2="100" stroke="#E1E3E6" stroke-width="0.5"/>
+                        <line x1="0" y1="150" x2="100%" y2="150" stroke="#E1E3E6" stroke-width="0.5"/>
+                        <line x1="0" y1="200" x2="100%" y2="200" stroke="#E1E3E6" stroke-width="0.5"/>
+                        <line x1="0" y1="250" x2="100%" y2="250" stroke="#E1E3E6" stroke-width="0.5"/>
+                        <line x1="0" y1="300" x2="100%" y2="300" stroke="#E1E3E6" stroke-width="0.5"/>
+                    </g>
+
+                    <!-- Sample Candlesticks with Clusters -->
+                    <!-- @MAP: candleData.map((candle, index) => ( -->
+                    <g class="candle-group" data-mock="true" data-bind="candle.time">
+                        <!-- Candlestick 1 -->
+                        <g transform="translate(50, 0)">
+                            <!-- Wick -->
+                            <line x1="6" y1="80" x2="6" y2="220" stroke="#131722" stroke-width="1"/>
+                            <!-- Body -->
+                            <rect x="2" y="120" width="8" height="60" fill="#26A69A" class="candle"/>
+                            
+                            <!-- Clusters to the right -->
+                            <g transform="translate(15, 0)">
+                                <!-- Cluster rectangles stacked vertically -->
+                                <rect x="0" y="80" width="12" height="8" fill="#26A69A" opacity="0.7" 
+                                      class="cluster-rect" stroke="white" stroke-width="1" data-cluster="highest"/>
+                                <rect x="0" y="90" width="8" height="8" fill="#26A69A" opacity="0.5" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="100" width="15" height="8" fill="#EF5350" opacity="0.6" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="110" width="10" height="8" fill="#26A69A" opacity="0.8" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="120" width="6" height="8" fill="#EF5350" opacity="0.4" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="130" width="11" height="8" fill="#26A69A" opacity="0.6" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="140" width="9" height="8" fill="#EF5350" opacity="0.7" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="150" width="7" height="8" fill="#26A69A" opacity="0.5" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="160" width="13" height="8" fill="#EF5350" opacity="0.8" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="170" width="5" height="8" fill="#26A69A" opacity="0.3" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="180" width="8" height="8" fill="#EF5350" opacity="0.5" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="190" width="4" height="8" fill="#26A69A" opacity="0.4" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="200" width="6" height="8" fill="#EF5350" opacity="0.6" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="210" width="3" height="8" fill="#26A69A" opacity="0.2" 
+                                      class="cluster-rect"/>
+                            </g>
+                        </g>
+
+                        <!-- Candlestick 2 -->
+                        <g transform="translate(110, 0)">
+                            <!-- Wick -->
+                            <line x1="6" y1="90" x2="6" y2="200" stroke="#131722" stroke-width="1"/>
+                            <!-- Body -->
+                            <rect x="2" y="110" width="8" height="50" fill="#EF5350" class="candle"/>
+                            
+                            <!-- Clusters -->
+                            <g transform="translate(15, 0)">
+                                <rect x="0" y="90" width="9" height="8" fill="#EF5350" opacity="0.6" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="100" width="14" height="8" fill="#26A69A" opacity="0.7" 
+                                      class="cluster-rect" stroke="white" stroke-width="1" data-cluster="highest"/>
+                                <rect x="0" y="110" width="7" height="8" fill="#EF5350" opacity="0.8" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="120" width="11" height="8" fill="#26A69A" opacity="0.5" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="130" width="8" height="8" fill="#EF5350" opacity="0.7" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="140" width="6" height="8" fill="#26A69A" opacity="0.4" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="150" width="12" height="8" fill="#EF5350" opacity="0.9" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="160" width="5" height="8" fill="#26A69A" opacity="0.3" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="170" width="9" height="8" fill="#EF5350" opacity="0.6" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="180" width="4" height="8" fill="#26A69A" opacity="0.2" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="190" width="7" height="8" fill="#EF5350" opacity="0.5" 
+                                      class="cluster-rect"/>
+                            </g>
+                        </g>
+
+                        <!-- Candlestick 3 -->
+                        <g transform="translate(170, 0)">
+                            <!-- Wick -->
+                            <line x1="6" y1="70" x2="6" y2="210" stroke="#131722" stroke-width="1"/>
+                            <!-- Body -->
+                            <rect x="2" y="100" width="8" height="70" fill="#26A69A" class="candle"/>
+                            
+                            <!-- Clusters -->
+                            <g transform="translate(15, 0)">
+                                <rect x="0" y="70" width="6" height="8" fill="#26A69A" opacity="0.4" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="80" width="10" height="8" fill="#EF5350" opacity="0.6" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="90" width="8" height="8" fill="#26A69A" opacity="0.7" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="100" width="16" height="8" fill="#26A69A" opacity="0.9" 
+                                      class="cluster-rect" stroke="white" stroke-width="1" data-cluster="highest"/>
+                                <rect x="0" y="110" width="12" height="8" fill="#EF5350" opacity="0.5" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="120" width="9" height="8" fill="#26A69A" opacity="0.8" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="130" width="7" height="8" fill="#EF5350" opacity="0.6" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="140" width="11" height="8" fill="#26A69A" opacity="0.7" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="150" width="5" height="8" fill="#EF5350" opacity="0.4" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="160" width="8" height="8" fill="#26A69A" opacity="0.6" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="170" width="4" height="8" fill="#EF5350" opacity="0.3" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="180" width="6" height="8" fill="#26A69A" opacity="0.5" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="190" width="3" height="8" fill="#EF5350" opacity="0.2" 
+                                      class="cluster-rect"/>
+                                <rect x="0" y="200" width="5" height="8" fill="#26A69A" opacity="0.3" 
+                                      class="cluster-rect"/>
+                            </g>
+                        </g>
+
+                        <!-- More candlesticks continue... -->
+                        <g transform="translate(230, 0)">
+                            <line x1="6" y1="95" x2="6" y2="195" stroke="#131722" stroke-width="1"/>
+                            <rect x="2" y="125" width="8" height="40" fill="#EF5350" class="candle"/>
+                            <g transform="translate(15, 0)">
+                                <rect x="0" y="95" width="8" height="8" fill="#EF5350" opacity="0.6" class="cluster-rect"/>
+                                <rect x="0" y="105" width="11" height="8" fill="#26A69A" opacity="0.7" class="cluster-rect"/>
+                                <rect x="0" y="115" width="13" height="8" fill="#EF5350" opacity="0.8" class="cluster-rect" stroke="white" stroke-width="1"/>
+                                <rect x="0" y="125" width="9" height="8" fill="#26A69A" opacity="0.5" class="cluster-rect"/>
+                                <rect x="0" y="135" width="7" height="8" fill="#EF5350" opacity="0.7" class="cluster-rect"/>
+                                <rect x="0" y="145" width="6" height="8" fill="#26A69A" opacity="0.4" class="cluster-rect"/>
+                                <rect x="0" y="155" width="10" height="8" fill="#EF5350" opacity="0.6" class="cluster-rect"/>
+                                <rect x="0" y="165" width="5" height="8" fill="#26A69A" opacity="0.3" class="cluster-rect"/>
+                                <rect x="0" y="175" width="8" height="8" fill="#EF5350" opacity="0.5" class="cluster-rect"/>
+                                <rect x="0" y="185" width="4" height="8" fill="#26A69A" opacity="0.2" class="cluster-rect"/>
+                            </g>
+                        </g>
+
+                        <g transform="translate(290, 0)">
+                            <line x1="6" y1="85" x2="6" y2="185" stroke="#131722" stroke-width="1"/>
+                            <rect x="2" y="115" width="8" height="50" fill="#26A69A" class="candle"/>
+                            <g transform="translate(15, 0)">
+                                <rect x="0" y="85" width="7" height="8" fill="#26A69A" opacity="0.5" class="cluster-rect"/>
+                                <rect x="0" y="95" width="9" height="8" fill="#EF5350" opacity="0.6" class="cluster-rect"/>
+                                <rect x="0" y="105" width="12" height="8" fill="#26A69A" opacity="0.8" class="cluster-rect"/>
+                                <rect x="0" y="115" width="15" height="8" fill="#26A69A" opacity="0.9" class="cluster-rect" stroke="white" stroke-width="1"/>
+                                <rect x="0" y="125" width="8" height="8" fill="#EF5350" opacity="0.6" class="cluster-rect"/>
+                                <rect x="0" y="135" width="10" height="8" fill="#26A69A" opacity="0.7" class="cluster-rect"/>
+                                <rect x="0" y="145" width="6" height="8" fill="#EF5350" opacity="0.4" class="cluster-rect"/>
+                                <rect x="0" y="155" width="9" height="8" fill="#26A69A" opacity="0.6" class="cluster-rect"/>
+                                <rect x="0" y="165" width="5" height="8" fill="#EF5350" opacity="0.3" class="cluster-rect"/>
+                                <rect x="0" y="175" width="7" height="8" fill="#26A69A" opacity="0.4" class="cluster-rect"/>
+                            </g>
+                        </g>
+                    </g>
+                    <!-- @END_MAP )) -->
+
+                    <!-- Crosshair Lines (hidden by default) -->
+                    <line id="crosshair-v" class="crosshair-v" style="display: none;"/>
+                    <line id="crosshair-h" class="crosshair-h" style="display: none;"/>
+                </svg>
+
+                <!-- Price Scale on Right -->
+                <div class="absolute right-0 top-0 w-16 h-full bg-gray-50 border-l border-chart-border">
+                    <div class="relative h-full">
+                        <div class="absolute right-2 price-level" style="top: 95px;">43,650</div>
+                        <div class="absolute right-2 price-level" style="top: 145px;">43,600</div>
+                        <div class="absolute right-2 price-level text-bull font-medium" style="top: 195px;">43,582</div>
+                        <div class="absolute right-2 price-level" style="top: 245px;">43,550</div>
+                        <div class="absolute right-2 price-level" style="top: 295px;">43,500</div>
+                    </div>
+                </div>
+
+                <!-- Tooltip (hidden by default) -->
+                <div id="tooltip" class="absolute tooltip" style="display: none; z-index: 20;">
+                    <div class="text-white">
+                        <div class="font-medium mb-1">Cluster Data</div>
+                        <div>Price: <span class="text-bull">$43,582.50</span></div>
+                        <div>Volume: <span class="text-white">1,245 BTC</span></div>
+                        <div>Buy Volume: <span class="text-bull">768 BTC</span></div>
+                        <div>Sell Volume: <span class="text-bear">477 BTC</span></div>
+                        <div>Delta: <span class="text-bull">+291 BTC</span></div>
+                        <div>Aggression: <span class="text-bull">62%</span></div>
+                    </div>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: CandlestickChart -->
+
+            <!-- Right Order Book -->
+            <!-- @COMPONENT: OrderBook -->
+            <div class="w-48 border-l border-chart-border bg-gray-50">
+                <div class="p-3">
+                    <div class="text-sm font-medium mb-3 text-center">Order Book</div>
+                    
+                    <!-- Ask Orders (Sell) -->
+                    <div class="mb-4">
+                        <div class="text-xs text-gray-500 mb-2">Ask (Sell)</div>
+                        <div class="space-y-px">
+                            <!-- @MAP: askOrders.map(order => ( -->
+                            <div class="flex justify-between items-center text-xs bg-red-50 px-2 py-1 group hover:bg-red-100 transition-colors cursor-pointer" data-mock="true">
+                                <span class="text-bear font-mono" data-bind="order.price">43,685.50</span>
+                                <span class="text-gray-600" data-bind="order.volume">0.245</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs bg-red-50 px-2 py-1 group hover:bg-red-100 transition-colors cursor-pointer" data-mock="true">
+                                <span class="text-bear font-mono">43,678.25</span>
+                                <span class="text-gray-600">0.156</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs bg-red-50 px-2 py-1 group hover:bg-red-100 transition-colors cursor-pointer" data-mock="true">
+                                <span class="text-bear font-mono">43,672.00</span>
+                                <span class="text-gray-600">0.089</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs bg-red-50 px-2 py-1 group hover:bg-red-100 transition-colors cursor-pointer" data-mock="true">
+                                <span class="text-bear font-mono">43,665.75</span>
+                                <span class="text-gray-600">0.312</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs bg-red-50 px-2 py-1 group hover:bg-red-100 transition-colors cursor-pointer" data-mock="true">
+                                <span class="text-bear font-mono">43,658.50</span>
+                                <span class="text-gray-600">0.198</span>
+                            </div>
+                            <!-- @END_MAP )) -->
+                        </div>
+                    </div>
+
+                    <!-- Current Price -->
+                    <div class="text-center py-2 border-y border-chart-border">
+                        <div class="text-lg font-mono font-medium text-bull">43,582.50</div>
+                        <div class="text-xs text-bull">+1.24% ↗</div>
+                    </div>
+
+                    <!-- Bid Orders (Buy) -->
+                    <div class="mt-4">
+                        <div class="text-xs text-gray-500 mb-2">Bid (Buy)</div>
+                        <div class="space-y-px">
+                            <!-- @MAP: bidOrders.map(order => ( -->
+                            <div class="flex justify-between items-center text-xs bg-green-50 px-2 py-1 group hover:bg-green-100 transition-colors cursor-pointer" data-mock="true">
+                                <span class="text-bull font-mono" data-bind="order.price">43,575.25</span>
+                                <span class="text-gray-600" data-bind="order.volume">0.387</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs bg-green-50 px-2 py-1 group hover:bg-green-100 transition-colors cursor-pointer" data-mock="true">
+                                <span class="text-bull font-mono">43,568.00</span>
+                                <span class="text-gray-600">0.456</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs bg-green-50 px-2 py-1 group hover:bg-green-100 transition-colors cursor-pointer" data-mock="true">
+                                <span class="text-bull font-mono">43,562.75</span>
+                                <span class="text-gray-600">0.234</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs bg-green-50 px-2 py-1 group hover:bg-green-100 transition-colors cursor-pointer" data-mock="true">
+                                <span class="text-bull font-mono">43,555.50</span>
+                                <span class="text-gray-600">0.678</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs bg-green-50 px-2 py-1 group hover:bg-green-100 transition-colors cursor-pointer" data-mock="true">
+                                <span class="text-bull font-mono">43,548.25</span>
+                                <span class="text-gray-600">0.123</span>
+                            </div>
+                            <!-- @END_MAP )) -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: OrderBook -->
+        </div>
+
+        <!-- Bottom Volume Histogram -->
+        <!-- @COMPONENT: VolumeHistogram -->
+        <div class="h-16 border-t border-chart-border bg-gray-50">
+            <div class="flex items-end h-full px-4 py-2 justify-start" style="margin-left: 80px; margin-right: 240px;">
+                <!-- Volume bars aligned under candles -->
+                <!-- @MAP: candleVolumeData.map((volume, index) => ( -->
+                <div class="flex-1 flex justify-center items-end mx-1" data-mock="true">
+                    <div class="volume-bar bg-bull hover:bg-opacity-80 transition-all cursor-pointer relative group" 
+                         style="width: 8px; height: 45px;" data-bind="volume.total">
+                        <div class="absolute bottom-0 inset-x-0 bg-bear" style="height: 30%"></div>
+                        <!-- Tooltip on hover -->
+                        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block">
+                            <div class="tooltip text-xs whitespace-nowrap">
+                                Volume: 1,245 BTC<br>
+                                Buy: 768 BTC<br>
+                                Sell: 477 BTC<br>
+                                Delta: +291
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-1 flex justify-center items-end mx-1" data-mock="true">
+                    <div class="volume-bar bg-bear hover:bg-opacity-80 transition-all cursor-pointer relative group" 
+                         style="width: 8px; height: 32px;">
+                        <div class="absolute bottom-0 inset-x-0 bg-bull" style="height: 40%"></div>
+                        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block">
+                            <div class="tooltip text-xs whitespace-nowrap">
+                                Volume: 856 BTC<br>
+                                Buy: 342 BTC<br>
+                                Sell: 514 BTC<br>
+                                Delta: -172
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-1 flex justify-center items-end mx-1" data-mock="true">
+                    <div class="volume-bar bg-bull hover:bg-opacity-80 transition-all cursor-pointer relative group" 
+                         style="width: 8px; height: 52px;">
+                        <div class="absolute bottom-0 inset-x-0 bg-bear" style="height: 25%"></div>
+                        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block">
+                            <div class="tooltip text-xs whitespace-nowrap">
+                                Volume: 1,456 BTC<br>
+                                Buy: 1,092 BTC<br>
+                                Sell: 364 BTC<br>
+                                Delta: +728
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-1 flex justify-center items-end mx-1" data-mock="true">
+                    <div class="volume-bar bg-bear hover:bg-opacity-80 transition-all cursor-pointer relative group" 
+                         style="width: 8px; height: 38px;">
+                        <div class="absolute bottom-0 inset-x-0 bg-bull" style="height: 35%"></div>
+                        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block">
+                            <div class="tooltip text-xs whitespace-nowrap">
+                                Volume: 967 BTC<br>
+                                Buy: 338 BTC<br>
+                                Sell: 629 BTC<br>
+                                Delta: -291
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-1 flex justify-center items-end mx-1" data-mock="true">
+                    <div class="volume-bar bg-bull hover:bg-opacity-80 transition-all cursor-pointer relative group" 
+                         style="width: 8px; height: 48px;">
+                        <div class="absolute bottom-0 inset-x-0 bg-bear" style="height: 20%"></div>
+                        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block">
+                            <div class="tooltip text-xs whitespace-nowrap">
+                                Volume: 1,325 BTC<br>
+                                Buy: 1,060 BTC<br>
+                                Sell: 265 BTC<br>
+                                Delta: +795
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- @END_MAP )) -->
+            </div>
+        </div>
+        <!-- @END_COMPONENT: VolumeHistogram -->
+    </div>
+    <!-- @END_COMPONENT: TradingInterface -->
+
+    <script>
+        (function() {
+            // @FUNCTIONALITY: Interactive crosshair and tooltip system
+            const chartContainer = document.getElementById('chart-container');
+            const mainChart = document.getElementById('main-chart');
+            const crosshairV = document.getElementById('crosshair-v');
+            const crosshairH = document.getElementById('crosshair-h');
+            const tooltip = document.getElementById('tooltip');
+
+            let isMouseOverChart = false;
+
+            chartContainer.addEventListener('mouseenter', function() {
+                isMouseOverChart = true;
+                crosshairV.style.display = 'block';
+                crosshairH.style.display = 'block';
+            });
+
+            chartContainer.addEventListener('mouseleave', function() {
+                isMouseOverChart = false;
+                crosshairV.style.display = 'none';
+                crosshairH.style.display = 'none';
+                tooltip.style.display = 'none';
+            });
+
+            chartContainer.addEventListener('mousemove', function(e) {
+                if (!isMouseOverChart) return;
+
+                const rect = chartContainer.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                // Update crosshair position
+                crosshairV.setAttribute('x1', x);
+                crosshairV.setAttribute('x2', x);
+                crosshairV.setAttribute('y1', 0);
+                crosshairV.setAttribute('y2', rect.height);
+
+                crosshairH.setAttribute('x1', 0);
+                crosshairH.setAttribute('x2', rect.width);
+                crosshairH.setAttribute('y1', y);
+                crosshairH.setAttribute('y2', y);
+            });
+
+            // @FUNCTIONALITY: Cluster hover interactions
+            const clusterRects = document.querySelectorAll('.cluster-rect');
+            clusterRects.forEach(rect => {
+                rect.addEventListener('mouseenter', function(e) {
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = (e.pageX + 10) + 'px';
+                    tooltip.style.top = (e.pageY - 10) + 'px';
+                    
+                    // Highlight cluster
+                    this.style.opacity = '1';
+                    this.style.strokeWidth = '2';
+                });
+
+                rect.addEventListener('mouseleave', function() {
+                    tooltip.style.display = 'none';
+                    this.style.opacity = this.getAttribute('opacity') || '0.7';
+                    this.style.strokeWidth = this.hasAttribute('data-cluster') ? '1' : '0';
+                });
+            });
+
+            // @FUNCTIONALITY: Drag to pan simulation
+            let isDragging = false;
+            let startX = 0;
+            let scrollLeft = 0;
+
+            chartContainer.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                startX = e.pageX - chartContainer.offsetLeft;
+                scrollLeft = chartContainer.scrollLeft;
+                chartContainer.style.cursor = 'grabbing';
+            });
+
+            chartContainer.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                e.preventDefault();
+                const x = e.pageX - chartContainer.offsetLeft;
+                const walk = (x - startX) * 2;
+                // TODO: Implement actual chart panning logic
+            });
+
+            chartContainer.addEventListener('mouseup', function() {
+                isDragging = false;
+                chartContainer.style.cursor = 'default';
+            });
+
+            // @FUNCTIONALITY: Scroll to zoom simulation
+            chartContainer.addEventListener('wheel', function(e) {
+                e.preventDefault();
+                // TODO: Implement zoom functionality
+                console.log('Zoom:', e.deltaY > 0 ? 'out' : 'in');
+            });
+
+            // @FUNCTIONALITY: Real-time data simulation
+            function simulateRealTimeUpdates() {
+                // TODO: Connect to WebSocket for real-time data
+                // This would update candle prices, cluster data, and order book
+                setInterval(() => {
+                    // Simulate price updates
+                    const priceElements = document.querySelectorAll('.price-level');
+                    const currentPrice = 43582.50 + (Math.random() - 0.5) * 10;
+                    
+                    // Update display price
+                    const mainPriceDisplay = document.querySelector('.text-bull.font-mono.font-medium');
+                    if (mainPriceDisplay) {
+                        mainPriceDisplay.textContent = currentPrice.toFixed(2);
+                    }
+                }, 1000);
+            }
+
+            // Start real-time simulation
+            simulateRealTimeUpdates();
+
+            // @STATE: chartData:CandleData[] = []
+            // @STATE: orderBookData:OrderBookData = { bids: [], asks: [] }
+            // @STATE: volumeProfile:VolumeProfileData[] = []
+            // @STATE: isConnected:boolean = false
+
+            // @FUNCTIONALITY: WebSocket connection for live data would be implemented here
+            // function connectWebSocket() {
+            //     const ws = new WebSocket('ws://localhost:8000/ws/BTCUSDT');
+            //     // Handle real-time data updates
+            // }
+        })();
+    </script>
+</body>
+</html>

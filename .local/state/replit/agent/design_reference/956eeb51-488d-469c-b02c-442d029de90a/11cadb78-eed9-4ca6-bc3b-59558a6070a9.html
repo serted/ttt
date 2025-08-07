@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Cluster View - Анализ кластеров криптовалют</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'trading-dark': '#0D1421',
+                        'trading-panel': '#1E2329',
+                        'trading-border': '#2B3139',
+                        'trading-gold': '#F0B90B',
+                        'trading-blue': '#24A1DE',
+                        'trading-green': '#0ECB81',
+                        'trading-red': '#F6465D',
+                        'trading-text': '#EAECEF',
+                        'trading-text-dim': '#848E9C'
+                    },
+                    fontFamily: {
+                        'mono': ['Roboto Mono', 'monospace'],
+                        'sans': ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        };
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-trading-dark text-trading-text font-sans overflow-hidden" data-theme="dark">
+    
+    <!-- @COMPONENT: Header -->
+    <header class="bg-trading-panel border-b border-trading-border px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center space-x-6">
+            <!-- Logo -->
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 bg-gradient-to-r from-trading-gold to-trading-blue rounded-lg flex items-center justify-center">
+                    <i class="fas fa-chart-line text-white text-sm"></i>
+                </div>
+                <h1 class="text-xl font-semibold text-trading-text">Crypto Cluster View</h1>
+            </div>
+            
+            <!-- Connection Status -->
+            <div class="flex items-center space-x-2 bg-trading-dark px-3 py-2 rounded-lg">
+                <!-- @STATE: isConnected:boolean = true -->
+                <div class="w-2 h-2 bg-trading-green rounded-full animate-pulse" data-bind="connectionStatus"></div>
+                <span class="text-sm text-trading-text-dim">WebSocket подключен</span>
+            </div>
+        </div>
+        
+        <!-- Controls -->
+        <div class="flex items-center space-x-4">
+            <!-- Symbol Selector -->
+            <select class="bg-trading-dark border border-trading-border text-trading-text px-3 py-2 rounded-lg focus:border-trading-gold focus:outline-none">
+                <option value="BTCUSDT">BTC/USDT</option>
+                <option value="ETHUSDT">ETH/USDT</option>
+                <option value="BNBUSDT">BNB/USDT</option>
+                <option value="ADAUSDT">ADA/USDT</option>
+                <option value="SOLUSDT">SOL/USDT</option>
+            </select>
+            
+            <!-- Timeframe Selector -->
+            <div class="flex bg-trading-dark rounded-lg border border-trading-border overflow-hidden">
+                <button class="px-3 py-2 text-sm bg-trading-gold text-black font-medium">1m</button>
+                <button class="px-3 py-2 text-sm hover:bg-trading-panel text-trading-text-dim">5m</button>
+                <button class="px-3 py-2 text-sm hover:bg-trading-panel text-trading-text-dim">15m</button>
+                <button class="px-3 py-2 text-sm hover:bg-trading-panel text-trading-text-dim">1h</button>
+                <button class="px-3 py-2 text-sm hover:bg-trading-panel text-trading-text-dim">4h</button>
+                <button class="px-3 py-2 text-sm hover:bg-trading-panel text-trading-text-dim">1d</button>
+            </div>
+            
+            <!-- Theme Toggle -->
+            <button class="bg-trading-dark border border-trading-border p-2 rounded-lg hover:border-trading-gold transition-colors" data-event="click:toggleTheme">
+                <i class="fas fa-sun text-trading-text"></i>
+            </button>
+        </div>
+    </header>
+    <!-- @END_COMPONENT: Header -->
+    
+    <!-- @COMPONENT: MainContent -->
+    <main class="flex h-screen overflow-hidden">
+        
+        <!-- @COMPONENT: LeftVolumeProfile -->
+        <aside class="w-20 bg-trading-panel border-r border-trading-border flex flex-col">
+            <div class="p-2 border-b border-trading-border">
+                <div class="text-xs text-trading-text-dim text-center">Профиль<br>Объемов</div>
+            </div>
+            <div class="flex-1 relative">
+                <!-- Volume Profile Visualization -->
+                <div class="absolute inset-0 p-1">
+                    <!-- @FUNCTIONALITY: This should render real-time volume profile using D3.js -->
+                    <div class="space-y-1">
+                        <!-- @MAP: volumeProfile.map(level => ( -->
+                        <div class="flex h-1">
+                            <div class="bg-trading-green opacity-60" style="width: 75%"></div>
+                            <div class="bg-trading-red opacity-60" style="width: 45%"></div>
+                        </div>
+                        <div class="flex h-1">
+                            <div class="bg-trading-green opacity-60" style="width: 60%"></div>
+                            <div class="bg-trading-red opacity-60" style="width: 30%"></div>
+                        </div>
+                        <div class="flex h-1">
+                            <div class="bg-trading-green opacity-60" style="width: 90%"></div>
+                            <div class="bg-trading-red opacity-60" style="width: 20%"></div>
+                        </div>
+                        <div class="flex h-1">
+                            <div class="bg-trading-green opacity-60" style="width: 45%"></div>
+                            <div class="bg-trading-red opacity-60" style="width: 80%"></div>
+                        </div>
+                        <!-- @END_MAP )) -->
+                    </div>
+                </div>
+            </div>
+        </aside>
+        <!-- @END_COMPONENT: LeftVolumeProfile -->
+        
+        <!-- @COMPONENT: ChartArea -->
+        <section class="flex-1 flex flex-col bg-trading-dark">
+            
+            <!-- Chart Controls -->
+            <div class="bg-trading-panel border-b border-trading-border px-4 py-3 flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <!-- Price Info -->
+                    <div class="flex items-center space-x-6">
+                        <div class="text-2xl font-mono font-semibold text-trading-text">
+                            <span data-bind="currentPrice">43,847.50</span>
+                            <span class="text-sm text-trading-text-dim">USDT</span>
+                        </div>
+                        <div class="flex items-center space-x-1 text-trading-green">
+                            <i class="fas fa-arrow-up text-xs"></i>
+                            <span class="font-mono">+2.34%</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Volume -->
+                    <div class="text-sm text-trading-text-dim">
+                        <span>Объем: </span>
+                        <span class="font-mono text-trading-text" data-bind="volume">1,847.23 BTC</span>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-2">
+                    <!-- Chart Controls -->
+                    <button class="px-3 py-2 bg-trading-gold text-black text-sm font-medium rounded" data-event="click:toggleAutoScroll">
+                        <i class="fas fa-lock mr-1"></i>
+                        Авто
+                    </button>
+                    <button class="px-3 py-2 bg-trading-dark border border-trading-border text-trading-text text-sm rounded hover:border-trading-gold">
+                        <i class="fas fa-layer-group mr-1"></i>
+                        Кластеры
+                    </button>
+                    <button class="px-3 py-2 bg-trading-dark border border-trading-border text-trading-text text-sm rounded hover:border-trading-gold">
+                        <i class="fas fa-chart-bar mr-1"></i>
+                        Объемы
+                    </button>
+                    <button class="px-3 py-2 bg-trading-dark border border-trading-border text-trading-text text-sm rounded hover:border-trading-gold">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Main Chart -->
+            <div class="flex-1 relative overflow-hidden">
+                <!-- @FUNCTIONALITY: This should implement LightweightCharts with candlestick and cluster data -->
+                <div class="absolute inset-0">
+                    
+                    <!-- Chart Canvas Placeholder -->
+                    <div class="w-full h-full bg-trading-dark relative">
+                        
+                        <!-- Price Scale (Right) -->
+                        <div class="absolute right-0 top-0 bottom-0 w-16 bg-trading-panel border-l border-trading-border">
+                            <div class="h-full flex flex-col justify-between py-4 text-xs font-mono text-trading-text-dim">
+                                <div class="text-right pr-2">44,200</div>
+                                <div class="text-right pr-2">44,000</div>
+                                <div class="text-right pr-2">43,800</div>
+                                <div class="text-right pr-2">43,600</div>
+                                <div class="text-right pr-2">43,400</div>
+                                <div class="text-right pr-2">43,200</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Time Scale (Bottom) -->
+                        <div class="absolute bottom-0 left-0 right-16 h-12 bg-trading-panel border-t border-trading-border">
+                            <div class="h-full flex items-center justify-between px-4 text-xs font-mono text-trading-text-dim">
+                                <span>14:20</span>
+                                <span>14:25</span>
+                                <span>14:30</span>
+                                <span>14:35</span>
+                                <span>14:40</span>
+                                <span>14:45</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Chart Grid and Candlesticks -->
+                        <div class="absolute inset-0 right-16 bottom-12">
+                            <svg class="w-full h-full">
+                                <!-- Grid lines -->
+                                <defs>
+                                    <pattern id="grid" width="50" height="40" patternUnits="userSpaceOnUse">
+                                        <path d="M 50 0 L 0 0 0 40" fill="none" stroke="#2B3139" stroke-width="1" opacity="0.3"/>
+                                    </pattern>
+                                </defs>
+                                <rect width="100%" height="100%" fill="url(#grid)"/>
+                                
+                                <!-- Sample Candlesticks -->
+                                <!-- Bullish candle -->
+                                <rect x="80" y="180" width="8" height="40" fill="#0ECB81"/>
+                                <line x1="84" y1="160" x2="84" y2="240" stroke="#0ECB81" stroke-width="1"/>
+                                
+                                <!-- Bearish candle -->
+                                <rect x="120" y="160" width="8" height="30" fill="#F6465D"/>
+                                <line x1="124" y1="140" x2="124" y2="210" stroke="#F6465D" stroke-width="1"/>
+                                
+                                <!-- More candlesticks -->
+                                <rect x="160" y="170" width="8" height="35" fill="#0ECB81"/>
+                                <line x1="164" y1="150" x2="164" y2="220" stroke="#0ECB81" stroke-width="1"/>
+                                
+                                <rect x="200" y="165" width="8" height="25" fill="#F6465D"/>
+                                <line x1="204" y1="155" x2="204" y2="200" stroke="#F6465D" stroke-width="1"/>
+                                
+                                <!-- Cluster visualization -->
+                                <circle cx="84" cy="170" r="3" fill="#F0B90B" opacity="0.7"/>
+                                <circle cx="84" cy="200" r="5" fill="#F0B90B" opacity="0.5"/>
+                                <circle cx="124" cy="180" r="4" fill="#24A1DE" opacity="0.6"/>
+                            </svg>
+                        </div>
+                        
+                        <!-- Crosshair -->
+                        <div class="absolute pointer-events-none" style="left: 200px; top: 150px;">
+                            <div class="w-0.5 h-full bg-trading-text-dim opacity-50"></div>
+                            <div class="w-full h-0.5 bg-trading-text-dim opacity-50"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Volume Chart -->
+            <div class="h-24 bg-trading-panel border-t border-trading-border">
+                <div class="h-full relative">
+                    <!-- Volume bars visualization -->
+                    <div class="absolute inset-0 right-16 flex items-end space-x-1 px-4">
+                        <div class="flex-1 bg-trading-green opacity-60" style="height: 30%"></div>
+                        <div class="flex-1 bg-trading-red opacity-60" style="height: 50%"></div>
+                        <div class="flex-1 bg-trading-green opacity-60" style="height: 80%"></div>
+                        <div class="flex-1 bg-trading-red opacity-60" style="height: 40%"></div>
+                        <div class="flex-1 bg-trading-green opacity-60" style="height: 60%"></div>
+                        <div class="flex-1 bg-trading-red opacity-60" style="height: 35%"></div>
+                        <div class="flex-1 bg-trading-green opacity-60" style="height: 70%"></div>
+                    </div>
+                    
+                    <!-- Volume scale -->
+                    <div class="absolute right-0 top-0 bottom-0 w-16 bg-trading-panel border-l border-trading-border flex flex-col justify-between py-2 text-xs font-mono text-trading-text-dim">
+                        <div class="text-right pr-2">2.5K</div>
+                        <div class="text-right pr-2">0</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!-- @END_COMPONENT: ChartArea -->
+        
+        <!-- @COMPONENT: RightVolumeProfile -->
+        <aside class="w-20 bg-trading-panel border-l border-trading-border flex flex-col">
+            <div class="p-2 border-b border-trading-border">
+                <div class="text-xs text-trading-text-dim text-center">Delta<br>Profile</div>
+            </div>
+            <div class="flex-1 relative">
+                <!-- Delta Profile Visualization -->
+                <div class="absolute inset-0 p-1">
+                    <div class="space-y-1">
+                        <!-- Delta bars -->
+                        <div class="flex justify-center">
+                            <div class="w-2 h-1 bg-trading-green" style="width: 60%"></div>
+                        </div>
+                        <div class="flex justify-center">
+                            <div class="w-2 h-1 bg-trading-red" style="width: 40%"></div>
+                        </div>
+                        <div class="flex justify-center">
+                            <div class="w-2 h-1 bg-trading-green" style="width: 80%"></div>
+                        </div>
+                        <div class="flex justify-center">
+                            <div class="w-2 h-1 bg-trading-red" style="width: 30%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        <!-- @END_COMPONENT: RightVolumeProfile -->
+        
+    </main>
+    <!-- @END_COMPONENT: MainContent -->
+    
+    <!-- @COMPONENT: Tooltip -->
+    <div class="fixed hidden pointer-events-none z-50 bg-black bg-opacity-90 text-white p-3 rounded-lg shadow-lg text-xs font-mono" id="tooltip" style="left: 300px; top: 200px;">
+        <div class="space-y-1">
+            <div>Время: <span class="text-trading-text">14:32:15</span></div>
+            <div>Цена: <span class="text-trading-text">43,847.50 USDT</span></div>
+            <div>Открытие: <span class="text-trading-text">43,820.00</span></div>
+            <div>Максимум: <span class="text-trading-green">43,890.50</span></div>
+            <div>Минимум: <span class="text-trading-red">43,810.20</span></div>
+            <div>Закрытие: <span class="text-trading-text">43,847.50</span></div>
+            <div class="border-t border-gray-600 pt-1 mt-2">
+                <div>Объем: <span class="text-trading-text">127.45 BTC</span></div>
+                <div>Покупки: <span class="text-trading-green">75.23 BTC</span></div>
+                <div>Продажи: <span class="text-trading-red">52.22 BTC</span></div>
+                <div>Дельта: <span class="text-trading-green">+23.01 BTC</span></div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: Tooltip -->
+    
+    <!-- @COMPONENT: StatusBar -->
+    <footer class="bg-trading-panel border-t border-trading-border px-6 py-2 flex items-center justify-between text-xs text-trading-text-dim">
+        <div class="flex items-center space-x-6">
+            <div>Последнее обновление: <span class="text-trading-text">14:45:23</span></div>
+            <div>Пинг: <span class="text-trading-green">12ms</span></div>
+            <div>Кластеров: <span class="text-trading-text">1,247</span></div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div>© 2024 Crypto Cluster View</div>
+            <div>Binance API</div>
+        </div>
+    </footer>
+    <!-- @END_COMPONENT: StatusBar -->
+    
+    <script>
+        // TODO: Implement WebSocket connection logic
+        // TODO: Implement LightweightCharts integration
+        // TODO: Implement D3.js volume profile rendering
+        // TODO: Implement theme switching functionality
+        
+        (function() {
+            // Theme switching
+            function toggleTheme() {
+                const body = document.body;
+                const currentTheme = body.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                
+                if (newTheme === 'light') {
+                    body.className = body.className
+                        .replace('bg-trading-dark', 'bg-white')
+                        .replace('text-trading-text', 'text-gray-900');
+                } else {
+                    body.className = 'bg-trading-dark text-trading-text font-sans overflow-hidden';
+                }
+                
+                body.setAttribute('data-theme', newTheme);
+            }
+            
+            // Connection status simulation
+            function simulateConnection() {
+                const statusElement = document.querySelector('[data-bind="connectionStatus"]');
+                let connected = true;
+                
+                setInterval(() => {
+                    if (Math.random() > 0.95) {
+                        connected = !connected;
+                        statusElement.className = connected 
+                            ? 'w-2 h-2 bg-trading-green rounded-full animate-pulse'
+                            : 'w-2 h-2 bg-trading-red rounded-full';
+                        
+                        statusElement.nextElementSibling.textContent = connected
+                            ? 'WebSocket подключен'
+                            : 'Переподключение...';
+                    }
+                }, 1000);
+            }
+            
+            // Price updates simulation
+            function simulatePriceUpdates() {
+                const priceElement = document.querySelector('[data-bind="currentPrice"]');
+                let basePrice = 43847.50;
+                
+                setInterval(() => {
+                    const change = (Math.random() - 0.5) * 20;
+                    basePrice += change;
+                    priceElement.textContent = basePrice.toFixed(2);
+                }, 500);
+            }
+            
+            // Tooltip functionality
+            function initializeTooltip() {
+                const chartArea = document.querySelector('.relative.overflow-hidden');
+                const tooltip = document.getElementById('tooltip');
+                
+                chartArea.addEventListener('mousemove', (e) => {
+                    const rect = chartArea.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    
+                    tooltip.style.left = (e.clientX + 10) + 'px';
+                    tooltip.style.top = (e.clientY - 10) + 'px';
+                    tooltip.classList.remove('hidden');
+                });
+                
+                chartArea.addEventListener('mouseleave', () => {
+                    tooltip.classList.add('hidden');
+                });
+            }
+            
+            // Initialize all functionality
+            document.addEventListener('DOMContentLoaded', function() {
+                simulateConnection();
+                simulatePriceUpdates();
+                initializeTooltip();
+                
+                // Add event listeners
+                document.querySelector('[data-event="click:toggleTheme"]')
+                    .addEventListener('click', toggleTheme);
+            });
+        })();
+    </script>
+</body>
+</html>
